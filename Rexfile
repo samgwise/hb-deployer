@@ -61,6 +61,56 @@ task "deploy", group => "devices", sub {
 
 };
 
+task "setup", group => "devices", sub {
+
+  run "echo Started task setup " . localtime . " >> rex-log";
+
+  sudo TRUE;
+
+  #zeroconf
+  pkg ["avahi-daemon", "avahi-discover", "libnss-mdns"],
+    ensure => "present";
+
+  #unzip
+  pkg "unzip",
+    ensure => "present";
+
+  #Java
+
+  #get the key?
+  run "apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886";
+
+  repository "add" => "webupd8team-java",
+    url         => "http://ppa.launchpad.net/webupd8team/java/ubuntu",
+    sign_key    => "keyserver.ubuntu.com",
+    distro      => "xenial",
+    repository  => "main",
+    source      => 1;
+
+  #accept Oracle Liscence
+  run "echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections";
+
+  pkg "oracle-java8-installer",
+    ensure => "present";
+
+  #TODO: handle the setup of wifi credentials
+
+  #setup rc.local
+  file "/etc/rc.local",
+
+    owner     => 'root',
+    group     => 'root',
+    mode      => '755',
+    content => template("files/rc.local.tpl", env => {
+        user    => $uname,
+    });
+
+  sudo FALSE;
+
+  run "echo Finished task setup " . localtime . " >> rex-log";
+
+};
+
 sub sudo_password_handler {
   sudo_password password_arg_handler(@_);
 }
